@@ -1,0 +1,89 @@
+version: "3"
+
+services:
+  server:
+    image: redash/redash:8.0.2.b37747
+    command: server
+    restart: always
+    ports:
+      - "5000:5000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - PYTHONUNBUFFERED=0
+      - REDASH_LOG_LEVEL
+      - REDASH_COOKIE_SECRET
+      - REDASH_SECRET_KEY
+      - REDASH_REDIS_URL=redis://${REDIS_HOST}:${REDIS_PORT}/0
+      - REDASH_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      - REDASH_WEB_WORKERS=4
+
+  scheduler:
+    image: redash/redash:8.0.2.b37747
+    command: scheduler
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - PYTHONUNBUFFERED=0
+      - REDASH_LOG_LEVEL
+      - REDASH_COOKIE_SECRET
+      - REDASH_SECRET_KEY
+      - REDASH_REDIS_URL=redis://${REDIS_HOST}:${REDIS_PORT}/0
+      - REDASH_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      - QUEUES=celery
+      - WORKERS_COUNT=1
+
+  scheduled_worker:
+    image: redash/redash:8.0.2.b37747
+    command: worker
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - PYTHONUNBUFFERED=0
+      - REDASH_LOG_LEVEL
+      - REDASH_COOKIE_SECRET
+      - REDASH_SECRET_KEY
+      - REDASH_REDIS_URL=redis://${REDIS_HOST}:${REDIS_PORT}/0
+      - REDASH_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      - QUEUES=scheduled_queries,schemas
+      - WORKERS_COUNT=1
+
+  adhoc_worker:
+    image: redash/redash:8.0.2.b37747
+    command: worker
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - PYTHONUNBUFFERED=0
+      - REDASH_LOG_LEVEL
+      - REDASH_COOKIE_SECRET
+      - REDASH_SECRET_KEY
+      - REDASH_REDIS_URL=redis://${REDIS_HOST}:${REDIS_PORT}/0
+      - REDASH_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      - QUEUES=queries
+      - WORKERS_COUNT=2
+
+  redis:
+    image: redis:5.0-alpine
+    restart: always
+
+  postgres:
+    image: postgres:12-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+    volumes:
+      - ${POSTGRES_VOLUME:-postgres-data}:/var/lib/postgresql/data
+
+volumes:
+    postgres-data:
+       
